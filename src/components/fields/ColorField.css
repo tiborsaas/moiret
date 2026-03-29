@@ -1,0 +1,65 @@
+.color-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.color-field__label {
+  font-size: 11px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.color-field__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-field__picker {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #333;
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+}
+
+.color-field__picker::-webkit-color-swatch-wrapper {
+  padding: 1px;
+}
+
+.color-field__picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.color-field__hex {
+  font-size: 11px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: #888;
+}
+
+.color-field__none-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #333;
+  border-radius: 3px;
+  background: #1a1a1a;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.color-field__none-btn.active {
+  background: #333;
+  color: #e0e0e0;
+  border-color: #555;
+}

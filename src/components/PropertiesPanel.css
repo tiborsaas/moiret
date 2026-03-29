@@ -1,0 +1,75 @@
+.properties-panel {
+  width: 300px;
+  min-width: 300px;
+  background: #111;
+  border-left: 1px solid #2a2a2a;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.properties-panel__empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #555;
+  font-size: 13px;
+}
+
+.properties-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.properties-panel__icon {
+  font-size: 18px;
+}
+
+.properties-panel__name-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.properties-panel__name-input:focus {
+  outline: none;
+  border-bottom-color: #6366f1;
+}
+
+.properties-panel__section {
+  padding: 10px 12px;
+  border-bottom: 1px solid #1e1e1e;
+}
+
+.properties-panel__section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.properties-panel__reset-btn {
+  width: 100%;
+  padding: 8px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.properties-panel__reset-btn:hover {
+  background: #252525;
+  color: #e0e0e0;
+  border-color: #555;
+}

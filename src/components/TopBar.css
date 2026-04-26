@@ -76,6 +76,41 @@
   position: relative;
 }
 
+.top-bar__view-toggle {
+  display: flex;
+  align-items: center;
+  border: 1px solid #333;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 8px;
+}
+
+.top-bar__view-btn {
+  padding: 5px 12px;
+  background: #1a1a1a;
+  border: none;
+  color: #888;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.top-bar__view-btn:hover {
+  background: #2a2a2a;
+  color: #ccc;
+}
+
+.top-bar__view-btn--active {
+  background: #6366f1;
+  color: #fff;
+}
+
+.top-bar__view-btn + .top-bar__view-btn {
+  border-left: 1px solid #333;
+}
+
 .top-bar__export-btn {
   padding: 6px 14px;
   background: #6366f1;
@@ -145,4 +180,99 @@
   border-radius: 3px;
   color: #ccc;
   font-size: 11px;
+}
+
+/* User presets */
+
+.top-bar__section--user-presets {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.top-bar__user-preset-btn {
+  padding: 4px 10px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #aaa;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.top-bar__user-preset-btn:hover:not(:disabled) {
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border-color: #555;
+}
+
+.top-bar__user-preset-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.top-bar__user-preset-btn--save {
+  color: #6366f1;
+  border-color: #6366f1;
+}
+
+.top-bar__user-preset-btn--save:hover:not(:disabled) {
+  background: #6366f122;
+  color: #818cf8;
+  border-color: #818cf8;
+}
+
+.top-bar__user-preset-btn--delete {
+  color: #ef4444;
+  border-color: #ef4444;
+  padding: 4px 8px;
+}
+
+.top-bar__user-preset-btn--delete:hover:not(:disabled) {
+  background: #ef444422;
+  color: #f87171;
+  border-color: #f87171;
+}
+
+.top-bar__user-preset-btn--confirm {
+  color: #22c55e;
+  border-color: #22c55e;
+}
+
+.top-bar__user-preset-btn--confirm:hover:not(:disabled) {
+  background: #22c55e22;
+  color: #4ade80;
+  border-color: #4ade80;
+}
+
+.top-bar__save-dialog {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.top-bar__save-input {
+  padding: 4px 8px;
+  background: #1a1a1a;
+  border: 1px solid #6366f1;
+  border-radius: 3px;
+  color: #e0e0e0;
+  font-size: 12px;
+  width: 140px;
+}
+
+.top-bar__save-input:focus {
+  outline: none;
+  border-color: #818cf8;
+}
+
+.top-bar__export-menu button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.top-bar__export-menu button:disabled:hover {
+  background: none;
+  color: #ccc;
 }

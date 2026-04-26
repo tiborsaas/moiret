@@ -2,10 +2,35 @@ import { create } from "zustand";
 import type { CanvasSettings, Layer, PatternType } from "../types";
 import { patternRegistry } from "../patterns";
 
+export interface UserPreset {
+    name: string;
+    canvas: CanvasSettings;
+    layers: Layer[];
+    savedAt: string;
+}
+
+const USER_PRESETS_KEY = "moiret_user_presets";
+
+function loadUserPresets(): UserPreset[] {
+    try {
+        const raw = localStorage.getItem(USER_PRESETS_KEY);
+        return raw ? (JSON.parse(raw) as UserPreset[]) : [];
+    } catch {
+        return [];
+    }
+}
+
+function persistUserPresets(presets: UserPreset[]): void {
+    localStorage.setItem(USER_PRESETS_KEY, JSON.stringify(presets));
+}
+
 interface PatternStore {
     layers: Layer[];
     canvas: CanvasSettings;
     selectedLayerId: string | null;
+    viewMode: '2d' | '3d';
+    plexiSpacing: number;
+    userPresets: UserPreset[];
 
     // Layer actions
     addLayer: (type: PatternType) => void;
@@ -18,8 +43,16 @@ interface PatternStore {
     // Canvas actions
     updateCanvas: (updates: Partial<CanvasSettings>) => void;
 
+    // View mode
+    setViewMode: (mode: '2d' | '3d') => void;
+    setPlexiSpacing: (spacing: number) => void;
+
     // Preset loading
     loadPreset: (layers: Layer[], canvas?: Partial<CanvasSettings>) => void;
+
+    // User preset actions
+    saveUserPreset: (name: string) => void;
+    deleteUserPreset: (name: string) => void;
 }
 
 let nextId = 1;
@@ -78,6 +111,9 @@ export const usePatternStore = create<PatternStore>((set, get) => ({
         backgroundColor: "#0a0a0a",
     },
     selectedLayerId: defaultLayer1.id,
+    viewMode: '2d',
+    plexiSpacing: 80,
+    userPresets: loadUserPresets(),
 
     addLayer: (type) => {
         const def = patternRegistry[type];
@@ -149,10 +185,37 @@ export const usePatternStore = create<PatternStore>((set, get) => ({
     updateCanvas: (updates) =>
         set((s) => ({ canvas: { ...s.canvas, ...updates } })),
 
+    setViewMode: (mode) => set({ viewMode: mode }),
+    setPlexiSpacing: (spacing) => set({ plexiSpacing: spacing }),
+
     loadPreset: (layers, canvas) =>
         set((s) => ({
             layers,
             canvas: canvas ? { ...s.canvas, ...canvas } : s.canvas,
             selectedLayerId: layers.length > 0 ? layers[0].id : null,
         })),
+
+    saveUserPreset: (name) => {
+        const { layers, canvas, userPresets } = get();
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const newPreset: UserPreset = {
+            name: trimmed,
+            canvas: { ...canvas },
+            layers: layers.map((l) => ({ ...l, params: { ...l.params } })),
+            savedAt: new Date().toISOString(),
+        };
+        const updated = [
+            ...userPresets.filter((p) => p.name !== trimmed),
+            newPreset,
+        ];
+        persistUserPresets(updated);
+        set({ userPresets: updated });
+    },
+
+    deleteUserPreset: (name) => {
+        const updated = get().userPresets.filter((p) => p.name !== name);
+        persistUserPresets(updated);
+        set({ userPresets: updated });
+    },
 }));

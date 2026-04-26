@@ -1,0 +1,223 @@
+.view3d {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Studio radial gradient background — rendered behind the Three.js canvas */
+.view3d__bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, #1a1a2e 0%, #0d0d14 55%, #050508 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.view3d__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 1;
+  display: block;
+}
+
+/* ── Spacing controls overlay ───────────────────────────────────────────────── */
+.view3d__controls {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(10, 10, 20, 0.88);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  z-index: 10;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.view3d__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.view3d__slider {
+  width: 140px;
+  accent-color: #6366f1;
+  cursor: pointer;
+}
+
+.view3d__value {
+  font-size: 11px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: #aaa;
+  min-width: 38px;
+  text-align: right;
+}
+
+/* ── Orbit hint ──────────────────────────────────────────────────────────────── */
+.view3d__hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+  z-index: 10;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ── Wood dev panel ──────────────────────────────────────────────────────────── */
+
+.view3d__devtoggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  padding: 5px 12px;
+  background: rgba(10, 10, 20, 0.88);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: 6px;
+  color: #888;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.view3d__devtoggle:hover {
+  color: #ccc;
+  border-color: rgba(99, 102, 241, 0.7);
+}
+
+.view3d__devtoggle--active {
+  color: #a5b4fc;
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.view3d__devpanel {
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  z-index: 20;
+  width: 300px;
+  max-height: calc(100% - 80px);
+  overflow-y: auto;
+  background: rgba(8, 8, 16, 0.95);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  padding: 10px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+.view3d__devpanel-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #6366f1;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #1e1e36;
+}
+
+.view3d__devsection {
+  margin-bottom: 10px;
+}
+
+.view3d__devsection-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #555;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view3d__regen-tag {
+  font-size: 8px;
+  padding: 1px 5px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 3px;
+  color: #f59e0b;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.view3d__live-tag {
+  font-size: 8px;
+  padding: 1px 5px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 3px;
+  color: #22c55e;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.view3d__devrow {
+  display: grid;
+  grid-template-columns: 72px 1fr 38px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.view3d__devrow-label {
+  font-size: 10px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.view3d__devrow-slider {
+  width: 100%;
+  accent-color: #6366f1;
+  cursor: pointer;
+}
+
+.view3d__devrow-value {
+  font-size: 10px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: #aaa;
+  text-align: right;
+}
+
+.view3d__devreset {
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px;
+  background: none;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #666;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.view3d__devreset:hover {
+  border-color: #6366f1;
+  color: #a5b4fc;
+}

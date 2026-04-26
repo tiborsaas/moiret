@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { TopBar } from './components/TopBar';
 import { LayerPanel } from './components/LayerPanel';
 import { Preview } from './components/Preview';
+import { View3D } from './components/View3D';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { usePatternStore } from './store/patternStore';
 import './App.css';
@@ -12,6 +13,7 @@ function App() {
   const selectedLayerId = usePatternStore((s) => s.selectedLayerId);
   const updateLayer = usePatternStore((s) => s.updateLayer);
   const layers = usePatternStore((s) => s.layers);
+  const viewMode = usePatternStore((s) => s.viewMode);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -50,7 +52,7 @@ function App() {
       <TopBar />
       <div className="app__workspace">
         <LayerPanel />
-        <Preview />
+        {viewMode === '3d' ? <View3D /> : <Preview />}
         <PropertiesPanel />
       </div>
     </div>

@@ -12,7 +12,7 @@ const _P: number[] = [];
     const base = Array.from({ length: 256 }, (_, i) => i);
     let seed = 42;
     const rng = () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; };
-    for (let i = 255; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [base[i], base[j]] = [base[j], base[i]]; }
+    for (let i = 255; i > 0; i--) { const j = Math.floor(rng() * (i + 1));[base[i], base[j]] = [base[j], base[i]]; }
     for (let i = 0; i < 512; i++) _P[i] = base[i & 255];
 })();
 
@@ -28,10 +28,10 @@ function _noise2(x: number, y: number): number {
     const xi = Math.floor(x) & 255, yi = Math.floor(y) & 255;
     const xf = x - Math.floor(x), yf = y - Math.floor(y);
     const u = _fade(xf), v = _fade(yf);
-    const aa = _P[_P[xi] + yi],     ab = _P[_P[xi] + yi + 1];
+    const aa = _P[_P[xi] + yi], ab = _P[_P[xi] + yi + 1];
     const ba = _P[_P[xi + 1] + yi], bb = _P[_P[xi + 1] + yi + 1];
     return _lerp(
-        _lerp(_grad(aa, xf, yf),     _grad(ba, xf - 1, yf),     u),
+        _lerp(_grad(aa, xf, yf), _grad(ba, xf - 1, yf), u),
         _lerp(_grad(ab, xf, yf - 1), _grad(bb, xf - 1, yf - 1), u),
         v
     );
@@ -70,38 +70,38 @@ function _walnutColor(t: number): [number, number, number] {
 
 // ─── Wood texture / material parameters ────────────────────────────────────
 export interface WoodTextureParams {
-    nPlanks:      number; // planks across the floor
-    groove:       number; // groove fraction (0–0.05)
-    ringFreq:     number; // ring periods per plank
-    grainFreq:    number; // grain periods along U
-    ringWarp:     number; // lateral warp amplitude
-    grainWarp:    number; // longitudinal warp amplitude
-    ringWeight:   number; // ring contribution to height
-    grainWeight:  number; // grain fibre contribution
-    poreFreqU:    number; // pore noise U frequency
-    poreFreqV:    number; // pore noise V frequency
-    poreAmt:      number; // pore noise amplitude
+    nPlanks: number; // planks across the floor
+    groove: number; // groove fraction (0–0.05)
+    ringFreq: number; // ring periods per plank
+    grainFreq: number; // grain periods along U
+    ringWarp: number; // lateral warp amplitude
+    grainWarp: number; // longitudinal warp amplitude
+    ringWeight: number; // ring contribution to height
+    grainWeight: number; // grain fibre contribution
+    poreFreqU: number; // pore noise U frequency
+    poreFreqV: number; // pore noise V frequency
+    poreAmt: number; // pore noise amplitude
     normalKernel: number; // central-diff kernel radius (px)
-    normalStrU:   number; // normal strength along grain
-    normalStrV:   number; // normal strength across grain
-    roughMin:     number; // roughness for smooth early-wood
-    roughMax:     number; // roughness for rough late-wood
+    normalStrU: number; // normal strength along grain
+    normalStrV: number; // normal strength across grain
+    roughMin: number; // roughness for smooth early-wood
+    roughMax: number; // roughness for rough late-wood
 }
 
 export interface WoodMaterialParams {
-    normalScaleU:       number;
-    normalScaleV:       number;
-    clearcoat:          number;
+    normalScaleU: number;
+    normalScaleV: number;
+    clearcoat: number;
     clearcoatRoughness: number;
-    ccNormalScaleU:     number;
-    ccNormalScaleV:     number;
-    metalness:          number;
+    ccNormalScaleU: number;
+    ccNormalScaleV: number;
+    metalness: number;
 }
 
 export const DEFAULT_WOOD_TEXTURE_PARAMS: WoodTextureParams = {
-    nPlanks: 8,      groove: 0.050,
-    ringFreq: 68,    grainFreq: 3,
-    ringWarp: 1.05,  grainWarp: 0.085,
+    nPlanks: 8, groove: 0.050,
+    ringFreq: 68, grainFreq: 3,
+    ringWarp: 1.05, grainWarp: 0.085,
     ringWeight: 0.35, grainWeight: 0.56,
     poreFreqU: 22, poreFreqV: 29, poreAmt: 0.026,
     normalKernel: 1, normalStrU: 0.8, normalStrV: 0.8,
@@ -109,8 +109,8 @@ export const DEFAULT_WOOD_TEXTURE_PARAMS: WoodTextureParams = {
 };
 
 export const DEFAULT_WOOD_MATERIAL_PARAMS: WoodMaterialParams = {
-    normalScaleU: 0.25,   normalScaleV: 1.55,
-    clearcoat: 0.02,      clearcoatRoughness: 0.24,
+    normalScaleU: 0.25, normalScaleV: 1.55,
+    clearcoat: 0.02, clearcoatRoughness: 0.24,
     ccNormalScaleU: 1.65, ccNormalScaleV: 5.35,
     metalness: 0.11,
 };
@@ -126,7 +126,7 @@ function generateWoodTexture(tp: WoodTextureParams): { diffuse: THREE.CanvasText
     const heights = new Float32Array(W * H);
     for (let py = 0; py < H; py++) {
         const ny = py / H;
-        const pF   = ny * N_PLANKS;
+        const pF = ny * N_PLANKS;
         const pIdx = Math.min(Math.floor(pF), N_PLANKS - 1);
         const pLoc = pF - pIdx;
 
@@ -140,8 +140,8 @@ function generateWoodTexture(tp: WoodTextureParams): { diffuse: THREE.CanvasText
             const gx = nx * tp.grainFreq;
             const gy = pLoc * tp.ringFreq;
 
-            const wx = _fbm(gx + sx,             gy * 0.06 + sy,           3, 2.0, 0.5) * tp.grainWarp;
-            const wy = _fbm(gx * 0.18 + sx + 4.5, pLoc * 1.8 + sy + 3.2,   4, 2.0, 0.5) * tp.ringWarp;
+            const wx = _fbm(gx + sx, gy * 0.06 + sy, 3, 2.0, 0.5) * tp.grainWarp;
+            const wy = _fbm(gx * 0.18 + sx + 4.5, pLoc * 1.8 + sy + 3.2, 4, 2.0, 0.5) * tp.ringWarp;
 
             // Annual rings: sine bands running along U axis
             const ringCoord = gy + wy;
@@ -194,7 +194,7 @@ function generateWoodTexture(tp: WoodTextureParams): { diffuse: THREE.CanvasText
 
             // Diffuse colour
             const [r, g, b] = _walnutColor(t);
-            dd[i * 4]     = r;
+            dd[i * 4] = r;
             dd[i * 4 + 1] = g;
             dd[i * 4 + 2] = b;
             dd[i * 4 + 3] = 255;
@@ -207,7 +207,7 @@ function generateWoodTexture(tp: WoodTextureParams): { diffuse: THREE.CanvasText
             const dX = (tR - tL) * tp.normalStrU;
             const dY = (tD - tU) * tp.normalStrV;
             const inv = 1.0 / Math.sqrt(dX * dX + dY * dY + 1.0);
-            nd[i * 4]     = Math.round((-dX * inv * 0.5 + 0.5) * 255);
+            nd[i * 4] = Math.round((-dX * inv * 0.5 + 0.5) * 255);
             nd[i * 4 + 1] = Math.round((-dY * inv * 0.5 + 0.5) * 255);
             nd[i * 4 + 2] = Math.round((inv * 0.5 + 0.5) * 255);
             nd[i * 4 + 3] = 255;
@@ -218,7 +218,7 @@ function generateWoodTexture(tp: WoodTextureParams): { diffuse: THREE.CanvasText
             // THREE reads this as a linear grayscale value [0,1]
             const rough = _lerp(tp.roughMin, tp.roughMax, 1.0 - t);
             const roughByte = Math.round(rough * 255);
-            rd[i * 4]     = roughByte;
+            rd[i * 4] = roughByte;
             rd[i * 4 + 1] = roughByte;
             rd[i * 4 + 2] = roughByte;
             rd[i * 4 + 3] = 255;
@@ -624,32 +624,32 @@ export function View3D() {
 
                         <div className="view3d__devsection">
                             <div className="view3d__devsection-label">Geometry <span className="view3d__regen-tag">regen</span></div>
-                            <DevRow label="Planks"    value={woodTexParams.nPlanks}  min={1}   max={12}   step={1}     onChange={(v) => setTP({ nPlanks: v })} />
-                            <DevRow label="Groove"    value={woodTexParams.groove}   min={0}   max={0.05} step={0.001} onChange={(v) => setTP({ groove: v })} />
+                            <DevRow label="Planks" value={woodTexParams.nPlanks} min={1} max={12} step={1} onChange={(v) => setTP({ nPlanks: v })} />
+                            <DevRow label="Groove" value={woodTexParams.groove} min={0} max={0.05} step={0.001} onChange={(v) => setTP({ groove: v })} />
                         </div>
 
                         <div className="view3d__devsection">
                             <div className="view3d__devsection-label">Rings & Grain <span className="view3d__regen-tag">regen</span></div>
-                            <DevRow label="Ring freq"  value={woodTexParams.ringFreq}  min={4}  max={80}  step={1}     onChange={(v) => setTP({ ringFreq: v })} />
-                            <DevRow label="Grain freq" value={woodTexParams.grainFreq} min={2}  max={60}  step={1}     onChange={(v) => setTP({ grainFreq: v })} />
-                            <DevRow label="Ring warp"  value={woodTexParams.ringWarp}  min={0}  max={1.5} step={0.01}  onChange={(v) => setTP({ ringWarp: v })} />
-                            <DevRow label="Grain warp" value={woodTexParams.grainWarp} min={0}  max={0.3} step={0.005} onChange={(v) => setTP({ grainWarp: v })} />
+                            <DevRow label="Ring freq" value={woodTexParams.ringFreq} min={4} max={80} step={1} onChange={(v) => setTP({ ringFreq: v })} />
+                            <DevRow label="Grain freq" value={woodTexParams.grainFreq} min={2} max={60} step={1} onChange={(v) => setTP({ grainFreq: v })} />
+                            <DevRow label="Ring warp" value={woodTexParams.ringWarp} min={0} max={1.5} step={0.01} onChange={(v) => setTP({ ringWarp: v })} />
+                            <DevRow label="Grain warp" value={woodTexParams.grainWarp} min={0} max={0.3} step={0.005} onChange={(v) => setTP({ grainWarp: v })} />
                         </div>
 
                         <div className="view3d__devsection">
                             <div className="view3d__devsection-label">Weights & Pore <span className="view3d__regen-tag">regen</span></div>
-                            <DevRow label="Ring weight"  value={woodTexParams.ringWeight}  min={0}   max={1}    step={0.01}  onChange={(v) => setTP({ ringWeight: v })} />
-                            <DevRow label="Grain weight" value={woodTexParams.grainWeight} min={0}   max={1}    step={0.01}  onChange={(v) => setTP({ grainWeight: v })} />
-                            <DevRow label="Pore freq U"  value={woodTexParams.poreFreqU}   min={2}   max={120}  step={1}     onChange={(v) => setTP({ poreFreqU: v })} />
-                            <DevRow label="Pore freq V"  value={woodTexParams.poreFreqV}   min={1}   max={40}   step={1}     onChange={(v) => setTP({ poreFreqV: v })} />
-                            <DevRow label="Pore amount"  value={woodTexParams.poreAmt}     min={0}   max={0.15} step={0.001} onChange={(v) => setTP({ poreAmt: v })} />
+                            <DevRow label="Ring weight" value={woodTexParams.ringWeight} min={0} max={1} step={0.01} onChange={(v) => setTP({ ringWeight: v })} />
+                            <DevRow label="Grain weight" value={woodTexParams.grainWeight} min={0} max={1} step={0.01} onChange={(v) => setTP({ grainWeight: v })} />
+                            <DevRow label="Pore freq U" value={woodTexParams.poreFreqU} min={2} max={120} step={1} onChange={(v) => setTP({ poreFreqU: v })} />
+                            <DevRow label="Pore freq V" value={woodTexParams.poreFreqV} min={1} max={40} step={1} onChange={(v) => setTP({ poreFreqV: v })} />
+                            <DevRow label="Pore amount" value={woodTexParams.poreAmt} min={0} max={0.15} step={0.001} onChange={(v) => setTP({ poreAmt: v })} />
                         </div>
 
                         <div className="view3d__devsection">
                             <div className="view3d__devsection-label">Normal Map <span className="view3d__regen-tag">regen</span></div>
-                            <DevRow label="Kernel px" value={woodTexParams.normalKernel} min={1} max={6}  step={1}   onChange={(v) => setTP({ normalKernel: v })} />
-                            <DevRow label="Str U"     value={woodTexParams.normalStrU}   min={0} max={8}  step={0.1} onChange={(v) => setTP({ normalStrU: v })} />
-                            <DevRow label="Str V"     value={woodTexParams.normalStrV}   min={0} max={16} step={0.1} onChange={(v) => setTP({ normalStrV: v })} />
+                            <DevRow label="Kernel px" value={woodTexParams.normalKernel} min={1} max={6} step={1} onChange={(v) => setTP({ normalKernel: v })} />
+                            <DevRow label="Str U" value={woodTexParams.normalStrU} min={0} max={8} step={0.1} onChange={(v) => setTP({ normalStrU: v })} />
+                            <DevRow label="Str V" value={woodTexParams.normalStrV} min={0} max={16} step={0.1} onChange={(v) => setTP({ normalStrV: v })} />
                         </div>
 
                         <div className="view3d__devsection">
@@ -660,13 +660,13 @@ export function View3D() {
 
                         <div className="view3d__devsection">
                             <div className="view3d__devsection-label">Material <span className="view3d__live-tag">live</span></div>
-                            <DevRow label="Normal U"   value={woodMatParams.normalScaleU}       min={0} max={3} step={0.05} onChange={(v) => setMP({ normalScaleU: v })} />
-                            <DevRow label="Normal V"   value={woodMatParams.normalScaleV}       min={0} max={8} step={0.05} onChange={(v) => setMP({ normalScaleV: v })} />
-                            <DevRow label="Clearcoat"  value={woodMatParams.clearcoat}          min={0} max={1} step={0.01} onChange={(v) => setMP({ clearcoat: v })} />
-                            <DevRow label="CC rough"   value={woodMatParams.clearcoatRoughness} min={0} max={1} step={0.01} onChange={(v) => setMP({ clearcoatRoughness: v })} />
-                            <DevRow label="CC norm U"  value={woodMatParams.ccNormalScaleU}     min={0} max={3} step={0.05} onChange={(v) => setMP({ ccNormalScaleU: v })} />
-                            <DevRow label="CC norm V"  value={woodMatParams.ccNormalScaleV}     min={0} max={6} step={0.05} onChange={(v) => setMP({ ccNormalScaleV: v })} />
-                            <DevRow label="Metalness"  value={woodMatParams.metalness}          min={0} max={1} step={0.01} onChange={(v) => setMP({ metalness: v })} />
+                            <DevRow label="Normal U" value={woodMatParams.normalScaleU} min={0} max={3} step={0.05} onChange={(v) => setMP({ normalScaleU: v })} />
+                            <DevRow label="Normal V" value={woodMatParams.normalScaleV} min={0} max={8} step={0.05} onChange={(v) => setMP({ normalScaleV: v })} />
+                            <DevRow label="Clearcoat" value={woodMatParams.clearcoat} min={0} max={1} step={0.01} onChange={(v) => setMP({ clearcoat: v })} />
+                            <DevRow label="CC rough" value={woodMatParams.clearcoatRoughness} min={0} max={1} step={0.01} onChange={(v) => setMP({ clearcoatRoughness: v })} />
+                            <DevRow label="CC norm U" value={woodMatParams.ccNormalScaleU} min={0} max={3} step={0.05} onChange={(v) => setMP({ ccNormalScaleU: v })} />
+                            <DevRow label="CC norm V" value={woodMatParams.ccNormalScaleV} min={0} max={6} step={0.05} onChange={(v) => setMP({ ccNormalScaleV: v })} />
+                            <DevRow label="Metalness" value={woodMatParams.metalness} min={0} max={1} step={0.01} onChange={(v) => setMP({ metalness: v })} />
                         </div>
 
                         <button

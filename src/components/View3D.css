@@ -8,7 +8,12 @@
 .view3d__bg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, #1a1a2e 0%, #0d0d14 55%, #050508 100%);
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    #1a1a2e 0%,
+    #0d0d14 55%,
+    #050508 100%
+  );
   z-index: 0;
   pointer-events: none;
 }
@@ -93,7 +98,10 @@
   letter-spacing: 0.5px;
   cursor: pointer;
   backdrop-filter: blur(8px);
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .view3d__devtoggle:hover {
@@ -214,7 +222,9 @@
   font-size: 10px;
   cursor: pointer;
   letter-spacing: 0.5px;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .view3d__devreset:hover {

@@ -94,7 +94,9 @@
   font-weight: 600;
   letter-spacing: 1px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .top-bar__view-btn:hover {
@@ -198,7 +200,10 @@
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .top-bar__user-preset-btn:hover:not(:disabled) {

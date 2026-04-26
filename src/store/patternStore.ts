@@ -28,7 +28,7 @@ interface PatternStore {
     layers: Layer[];
     canvas: CanvasSettings;
     selectedLayerId: string | null;
-    viewMode: '2d' | '3d';
+    viewMode: "2d" | "3d";
     plexiSpacing: number;
     userPresets: UserPreset[];
 
@@ -44,7 +44,7 @@ interface PatternStore {
     updateCanvas: (updates: Partial<CanvasSettings>) => void;
 
     // View mode
-    setViewMode: (mode: '2d' | '3d') => void;
+    setViewMode: (mode: "2d" | "3d") => void;
     setPlexiSpacing: (spacing: number) => void;
 
     // Preset loading
@@ -111,7 +111,7 @@ export const usePatternStore = create<PatternStore>((set, get) => ({
         backgroundColor: "#0a0a0a",
     },
     selectedLayerId: defaultLayer1.id,
-    viewMode: '2d',
+    viewMode: "2d",
     plexiSpacing: 80,
     userPresets: loadUserPresets(),
 

@@ -3,6 +3,17 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { usePatternStore } from '../store/patternStore';
 import { buildLayerSvgString, svgStringToCanvasTexture } from './view3d/layerTexture';
+import {
+    buildCompositeEtchCanvas,
+    buildCrystalPlate,
+    buildHeadLamp,
+    disposeHeadLamp,
+    disposeCrystalMesh,
+    getEtchShaderMat,
+    type EtchShaderParams,
+    type HeadLamp,
+    DEFAULT_ETCH_SHADER_PARAMS,
+} from './view3d/crystalScene';
 import './View3D.css';
 
 // ─── Procedural walnut wood texture ──────────────────────────────────────────
@@ -98,7 +109,7 @@ export interface WoodMaterialParams {
     metalness: number;
 }
 
-export const DEFAULT_WOOD_TEXTURE_PARAMS: WoodTextureParams = {
+const DEFAULT_WOOD_TEXTURE_PARAMS: WoodTextureParams = {
     nPlanks: 8, groove: 0.050,
     ringFreq: 68, grainFreq: 3,
     ringWarp: 1.05, grainWarp: 0.085,
@@ -108,7 +119,7 @@ export const DEFAULT_WOOD_TEXTURE_PARAMS: WoodTextureParams = {
     roughMin: 0.14, roughMax: 0.89,
 };
 
-export const DEFAULT_WOOD_MATERIAL_PARAMS: WoodMaterialParams = {
+const DEFAULT_WOOD_MATERIAL_PARAMS: WoodMaterialParams = {
     normalScaleU: 0.25, normalScaleV: 1.55,
     clearcoat: 0.02, clearcoatRoughness: 0.24,
     ccNormalScaleU: 1.65, ccNormalScaleV: 5.35,
@@ -249,16 +260,65 @@ interface SceneRefs {
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
     plexiGroup: THREE.Group;
+    crystalGroup: THREE.Group;
+    headLamp: HeadLamp | null;
+    sceneLights: THREE.Light[];
     rafId: number;
     floor: THREE.Mesh;
     floorMat: THREE.MeshPhysicalMaterial;
     woodTextures: { diffuse: THREE.CanvasTexture; normalMap: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture };
+    refractionTarget: THREE.WebGLRenderTarget;
+    etchShaderMats: THREE.ShaderMaterial[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FLOOR_Y_OFFSET = -60;   // below the sheet stack
-const CAMERA_Z = 700;
+const CAMERA_MIN_DISTANCE = 100;
+const CAMERA_MAX_DISTANCE = 2000;
+const CAMERA_DEFAULT_DISTANCE = CAMERA_MAX_DISTANCE * 0.8;
+const PLEXI_BASEPLATE_NAME = 'plexiBaseplate';
+const CRYSTAL_BASEPLATE_NAME = 'crystalBaseplate';
+const PLEXI_BASEPLATE_HEIGHT = 12;
+const PLEXI_BASEPLATE_Y_GAP = 8;
+const PLEXI_BASEPLATE_WIDTH_PADDING = 28;
+const PLEXI_BASEPLATE_DEPTH_PADDING = 40;
+
+function getStackDepth(sheetCount: number, spacing: number): number {
+    return Math.max(0, (sheetCount - 1) * spacing);
+}
+
+function getBaseplateDepth(sheetCount: number, spacing: number): number {
+    return Math.max(24, getStackDepth(sheetCount, spacing) + PLEXI_BASEPLATE_DEPTH_PADDING);
+}
+
+function buildStackBaseplate(
+    name: string,
+    W: number,
+    H: number,
+    sheetCount: number,
+    spacing: number,
+): THREE.Mesh {
+    const stackDepth = getStackDepth(sheetCount, spacing);
+    const baseGeo = new THREE.BoxGeometry(W + PLEXI_BASEPLATE_WIDTH_PADDING, PLEXI_BASEPLATE_HEIGHT, 1);
+    const baseMat = new THREE.MeshStandardMaterial({
+        color: 0x050505,
+        roughness: 0.82,
+        metalness: 0.06,
+    });
+    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+    baseMesh.name = name;
+    baseMesh.position.set(
+        0,
+        (-H / 2 - PLEXI_BASEPLATE_Y_GAP - PLEXI_BASEPLATE_HEIGHT / 2) - 15,
+        -stackDepth / 2,
+    );
+    baseMesh.scale.y = 5;
+    baseMesh.scale.z = getBaseplateDepth(sheetCount, spacing);
+    baseMesh.castShadow = true;
+    baseMesh.receiveShadow = true;
+    return baseMesh;
+}
 
 // ─── Dev panel slider row ─────────────────────────────────────────────────────
 
@@ -287,24 +347,56 @@ export function View3D() {
     const canvas = usePatternStore((s) => s.canvas);
     const plexiSpacing = usePatternStore((s) => s.plexiSpacing);
     const setPlexiSpacing = usePatternStore((s) => s.setPlexiSpacing);
+    const render3DMode = usePatternStore((s) => s.render3DMode);
 
     const [showDevPanel, setShowDevPanel] = useState(false);
+    const [showEtchPanel, setShowEtchPanel] = useState(false);
     const [woodTexParams, setWoodTexParams] = useState<WoodTextureParams>(DEFAULT_WOOD_TEXTURE_PARAMS);
     const [woodMatParams, setWoodMatParams] = useState<WoodMaterialParams>(DEFAULT_WOOD_MATERIAL_PARAMS);
+    const [etchParams, setEtchParams] = useState<EtchShaderParams>(DEFAULT_ETCH_SHADER_PARAMS);
     const woodTexParamsRef = useRef(woodTexParams);
-    woodTexParamsRef.current = woodTexParams;
     const woodMatParamsRef = useRef(woodMatParams);
-    woodMatParamsRef.current = woodMatParams;
+    const etchParamsRef = useRef(etchParams);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const sceneRefs = useRef<SceneRefs | null>(null);
     // Keep a ref to the latest plexiSpacing for the RAF loop without causing re-renders
     const spacingRef = useRef(plexiSpacing);
-    spacingRef.current = plexiSpacing;
     const buildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const crystalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const woodRegenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isFirstWoodRegen = useRef(true);
+
+    useEffect(() => {
+        woodTexParamsRef.current = woodTexParams;
+    }, [woodTexParams]);
+
+    useEffect(() => {
+        woodMatParamsRef.current = woodMatParams;
+    }, [woodMatParams]);
+
+    useEffect(() => {
+        spacingRef.current = plexiSpacing;
+    }, [plexiSpacing]);
+
+    useEffect(() => {
+        etchParamsRef.current = etchParams;
+    }, [etchParams]);
+
+    const applyEtchParamsToMaterial = useCallback((mat: THREE.ShaderMaterial, params: EtchShaderParams) => {
+        mat.uniforms.uRefractionStrength.value = params.refractionStrength;
+        mat.uniforms.uFrostBlend.value = params.frostBlend;
+        mat.uniforms.uFrostFresnelAdd.value = params.frostFresnelAdd;
+        mat.uniforms.uSpecularStrength.value = params.specularStrength;
+        mat.uniforms.uFresnelPower.value = params.fresnelPower;
+        mat.uniforms.uBaseAlpha.value = params.baseAlpha;
+        mat.uniforms.uFresnelAlphaAdd.value = params.fresnelAlphaAdd;
+        mat.uniforms.uLampFalloffStrength.value = params.lampFalloffStrength;
+        mat.uniforms.uLampMinLight.value = params.lampMinLight;
+        mat.uniforms.uLampWrap.value = params.lampWrap;
+        mat.uniforms.uLampVerticalBias.value = params.lampVerticalBias;
+    }, []);
 
     // ── Initialise Three.js scene (once on mount) ─────────────────────────────
     useEffect(() => {
@@ -332,15 +424,15 @@ export function View3D() {
 
         // Camera
         const camera = new THREE.PerspectiveCamera(50, w / h, 1, 5000);
-        camera.position.set(0, 60, CAMERA_Z);
+        camera.position.set(0, 60, CAMERA_DEFAULT_DISTANCE);
         camera.lookAt(0, 0, 0);
 
         // Controls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.06;
-        controls.minDistance = 100;
-        controls.maxDistance = 2000;
+        controls.minDistance = CAMERA_MIN_DISTANCE;
+        controls.maxDistance = CAMERA_MAX_DISTANCE;
         controls.target.set(0, 0, 0);
 
         // ── Lighting ──────────────────────────────────────────────────────────
@@ -360,6 +452,9 @@ export function View3D() {
         const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
         rimLight.position.set(0, -200, -300);
         scene.add(rimLight);
+
+        // Kept together so the mode-toggle effect can hide them all at once
+        const sceneLights: THREE.Light[] = [ambient, keyLight, fillLight, rimLight];
 
         // ── Studio floor ──────────────────────────────────────────────────────
         const initWoodTextures = generateWoodTexture(woodTexParamsRef.current);
@@ -385,22 +480,82 @@ export function View3D() {
         scene.add(floor);
 
         // Background colour matching the CSS gradient centre
-        scene.background = new THREE.Color(0x0d0d1a);
+        scene.background = new THREE.Color(0x000000);
 
         // ── Plexi group (sheets rebuilt when layers/spacing changes) ──────────
         const plexiGroup = new THREE.Group();
         scene.add(plexiGroup);
 
+        // ── Crystal group (hidden until crystal mode is active) ───────────────
+        const crystalGroup = new THREE.Group();
+        crystalGroup.visible = false;
+        scene.add(crystalGroup);
+
+        // ── Head lamp (hidden until etched mode is active) ──────────────────────
+        // Built lazily when canvas dimensions are known; null until first build.
+        // We create a placeholder here; it is replaced in buildCrystal().
+        const headLamp: HeadLamp | null = null;
+
+        // ── Screen-space refraction render target ─────────────────────────────
+        const drawSize = renderer.getDrawingBufferSize(new THREE.Vector2());
+        const refractionTarget = new THREE.WebGLRenderTarget(drawSize.x, drawSize.y, {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+        });
+
         // ── Animation loop ────────────────────────────────────────────────────
         let rafId = 0;
+        const fallbackLampPos = new THREE.Vector3(0, 200, 0);
+        const fallbackLampNormal = new THREE.Vector3(0, -1, 0);
+        const lampPos = new THREE.Vector3();
+        const lampNormal = new THREE.Vector3();
+        const lampQuat = new THREE.Quaternion();
         function animate() {
             rafId = requestAnimationFrame(animate);
             controls.update();
+
+            // Live lamp uniforms + two-pass render for screen-space refraction.
+            const refs = sceneRefs.current;
+            if (refs && refs.etchShaderMats.length > 0) {
+                const lamp = refs.headLamp;
+                if (lamp) {
+                    lamp.light.getWorldPosition(lampPos);
+                    lamp.light.getWorldQuaternion(lampQuat);
+                    // RectAreaLight emits along local -Z; rotate it to world space.
+                    lampNormal.set(0, 0, -1).applyQuaternion(lampQuat).normalize();
+                } else {
+                    lampPos.copy(fallbackLampPos);
+                    lampNormal.copy(fallbackLampNormal);
+                }
+                const lampIntensity = lamp && lamp.light.visible ? lamp.light.intensity : 0.0;
+
+                refs.etchShaderMats.forEach((mat) => {
+                    mat.uniforms.uLampWorldPos.value.copy(lampPos);
+                    mat.uniforms.uLampNormal.value.copy(lampNormal);
+                    mat.uniforms.uLampIntensity.value = lampIntensity;
+                });
+
+                if (crystalGroup.visible) {
+                    // Pass 1: render scene without crystal plates → refraction target
+                    crystalGroup.visible = false;
+                    renderer.setRenderTarget(refractionTarget);
+                    renderer.render(scene, camera);
+                    renderer.setRenderTarget(null);
+                    crystalGroup.visible = true;
+
+                    // Feed captured texture into every etch shader
+                    const tex = refractionTarget.texture;
+                    refs.etchShaderMats.forEach((mat) => {
+                        mat.uniforms.uSceneTex.value = tex;
+                    });
+                }
+            }
+
             renderer.render(scene, camera);
         }
         animate();
 
-        sceneRefs.current = { renderer, scene, camera, controls, plexiGroup, rafId, floor, floorMat, woodTextures: initWoodTextures };
+        sceneRefs.current = { renderer, scene, camera, controls, plexiGroup, crystalGroup, headLamp, sceneLights, rafId, floor, floorMat, woodTextures: initWoodTextures, refractionTarget, etchShaderMats: [] };
 
         // ── Resize observer ───────────────────────────────────────────────────
         const ro = new ResizeObserver(() => {
@@ -410,6 +565,8 @@ export function View3D() {
             camera.aspect = w2 / h2;
             camera.updateProjectionMatrix();
             renderer.setSize(w2, h2);
+            const ds = renderer.getDrawingBufferSize(new THREE.Vector2());
+            refractionTarget.setSize(ds.x, ds.y);
         });
         ro.observe(container);
 
@@ -421,6 +578,11 @@ export function View3D() {
                 sceneRefs.current.woodTextures.diffuse.dispose();
                 sceneRefs.current.woodTextures.normalMap.dispose();
                 sceneRefs.current.woodTextures.roughnessMap.dispose();
+                sceneRefs.current.refractionTarget.dispose();
+                if (sceneRefs.current.headLamp) disposeHeadLamp(sceneRefs.current.headLamp);
+                sceneRefs.current.crystalGroup.traverse((obj) => {
+                    if (obj instanceof THREE.Mesh) disposeCrystalMesh(obj as THREE.Mesh);
+                });
             }
             renderer.dispose();
             sceneRefs.current = null;
@@ -437,6 +599,7 @@ export function View3D() {
         const W = canvas.width;
         const H = canvas.height;
         const spacing = spacingRef.current;
+        const stackDepth = getStackDepth(visibleLayers.length, spacing);
 
         // Build all objects into a staged array first — no clearing yet
         const staged: THREE.Object3D[] = [];
@@ -497,6 +660,14 @@ export function View3D() {
             }
         }
 
+        if (visibleLayers.length > 0) {
+            const baseMesh = buildStackBaseplate(PLEXI_BASEPLATE_NAME, W, H, visibleLayers.length, spacing);
+            baseMesh.castShadow = true;
+            baseMesh.receiveShadow = true;
+            baseMesh.renderOrder = visibleLayers.length * 3 + 10;
+            staged.push(baseMesh);
+        }
+
         // Atomic swap: dispose old, clear, add new — all in one synchronous block
         plexiGroup.traverse((obj) => {
             if (obj instanceof THREE.Mesh) {
@@ -512,16 +683,104 @@ export function View3D() {
         staged.forEach((obj) => plexiGroup.add(obj));
 
         // Centre the whole stack on Z
-        const totalDepth = (visibleLayers.length - 1) * spacing;
-        plexiGroup.position.z = totalDepth / 2;
+        plexiGroup.position.z = stackDepth / 2;
     }, [layers, canvas]);
 
-    // Debounced build: wait 150 ms after the last change before rebuilding
+    // Debounced build: wait 150 ms after the last change before rebuilding (printed mode only)
     useEffect(() => {
+        if (render3DMode !== 'printed') return;
         if (buildTimerRef.current) clearTimeout(buildTimerRef.current);
         buildTimerRef.current = setTimeout(() => { buildSheets(); }, 150);
         return () => { if (buildTimerRef.current) clearTimeout(buildTimerRef.current); };
-    }, [buildSheets]);
+    }, [buildSheets, render3DMode]);
+
+    // ── Etched mode: one thin glass plate per visible layer, stacked like printed ─
+    const buildCrystal = useCallback(async () => {
+        const refs = sceneRefs.current;
+        if (!refs) return;
+        const { crystalGroup } = refs;
+        const W = canvas.width;
+        const H = canvas.height;
+        const spacing = spacingRef.current;
+        const visibleLayers = layers.filter((l) => l.visible);
+        const stackDepth = getStackDepth(visibleLayers.length, spacing);
+
+        // Dispose existing crystal slabs before rebuilding
+        crystalGroup.traverse((obj) => {
+            if (obj instanceof THREE.Mesh) disposeCrystalMesh(obj as THREE.Mesh);
+        });
+        crystalGroup.clear();
+
+        const staged: THREE.Object3D[] = [];
+
+        for (let i = 0; i < visibleLayers.length; i++) {
+            try {
+                // Each layer gets its own thin etched plate
+                const etchCanvas = await buildCompositeEtchCanvas([visibleLayers[i]], canvas);
+                const plate = buildCrystalPlate(W, H, etchCanvas);
+                plate.position.z = -i * spacing;
+                staged.push(plate);
+            } catch (err) {
+                console.warn('[View3D] Failed to build etched slab for layer', visibleLayers[i].id, err);
+            }
+        }
+
+        if (visibleLayers.length > 0) {
+            const baseMesh = buildStackBaseplate(CRYSTAL_BASEPLATE_NAME, W, H, visibleLayers.length, spacing);
+            baseMesh.renderOrder = visibleLayers.length * 3 + 10;
+            staged.push(baseMesh);
+        }
+
+        staged.forEach((m) => crystalGroup.add(m));
+
+        // Register etch shader materials for the two-pass refraction render loop
+        const currentEtchParams = etchParamsRef.current;
+        refs.etchShaderMats = [];
+        staged.forEach((obj) => {
+            if (!(obj instanceof THREE.Group)) return;
+            const mat = getEtchShaderMat(obj);
+            if (!mat) return;
+            mat.uniforms.uSceneTex.value = refs.refractionTarget.texture;
+            applyEtchParamsToMaterial(mat, currentEtchParams);
+            refs.etchShaderMats.push(mat);
+        });
+
+        crystalGroup.position.z = stackDepth / 2;
+
+        // ── Build / replace the hanging head lamp ─────────────────────────────
+        if (refs.headLamp) {
+            disposeHeadLamp(refs.headLamp);
+            refs.scene.remove(refs.headLamp.light, refs.headLamp.mesh);
+        }
+        const lamp = buildHeadLamp(W, H);
+        lamp.light.visible = true;
+        lamp.mesh.visible = true;
+        refs.scene.add(lamp.light, lamp.mesh);
+        refs.headLamp = lamp;
+    }, [layers, canvas, applyEtchParamsToMaterial]);
+
+    // ── Toggle scene elements when render mode changes ────────────────────────
+    useEffect(() => {
+        const refs = sceneRefs.current;
+        if (!refs) return;
+        const isEtched = render3DMode === 'etched';
+        refs.plexiGroup.visible = !isEtched;
+        refs.crystalGroup.visible = isEtched;
+        // In etched mode only the headlamp provides light; hide all scene lights
+        refs.sceneLights.forEach((l) => { l.visible = !isEtched; });
+        if (refs.headLamp) {
+            refs.headLamp.light.visible = isEtched;
+            refs.headLamp.mesh.visible = isEtched;
+        }
+    }, [render3DMode]);
+
+    // ── Rebuild etched plates when layers/canvas change or mode switches to etched ─
+    useEffect(() => {
+        if (render3DMode !== 'etched') return;
+        if (crystalTimerRef.current) clearTimeout(crystalTimerRef.current);
+        crystalTimerRef.current = setTimeout(() => { buildCrystal(); }, 150);
+        return () => { if (crystalTimerRef.current) clearTimeout(crystalTimerRef.current); };
+    }, [buildCrystal, render3DMode]);
     // ── Rebuild wood textures when procedural params change (debounced, CPU heavy) ───
     const rebuildWoodTextures = useCallback(() => {
         const refs = sceneRefs.current;
@@ -545,7 +804,14 @@ export function View3D() {
         woodRegenTimerRef.current = setTimeout(rebuildWoodTextures, 300);
         return () => { if (woodRegenTimerRef.current) clearTimeout(woodRegenTimerRef.current); };
     }, [woodTexParams, rebuildWoodTextures]);
-
+    // ── Live-update etch shader uniforms when params change ─────────────────────
+    useEffect(() => {
+        const refs = sceneRefs.current;
+        if (!refs) return;
+        refs.etchShaderMats.forEach((mat) => {
+            applyEtchParamsToMaterial(mat, etchParams);
+        });
+    }, [etchParams, applyEtchParamsToMaterial]);
     // ── Live-update material properties (no texture regen needed) ───────────────
     useEffect(() => {
         const refs = sceneRefs.current;
@@ -563,11 +829,9 @@ export function View3D() {
     useEffect(() => {
         const refs = sceneRefs.current;
         if (!refs) return;
-        const { plexiGroup } = refs;
+        const { plexiGroup, crystalGroup } = refs;
 
-        // Collect all top-level objects that represent "sheets" — plexiMeshes, edges, patMeshes
-        // They are in insertion order: for each visible layer we inserted 3 objects
-        // We'll re-traverse and re-assign z by groups of 3
+        // Printed mode: 3-object groups (plexiMesh + edges + patMesh per layer)
         const children = [...plexiGroup.children];
         const groupSize = 3; // plexiMesh + edges + patMesh per layer
         const numSheets = Math.floor(children.length / groupSize);
@@ -582,8 +846,29 @@ export function View3D() {
             if (patMesh) { patMesh.position.z = z + 0.5; patMesh.renderOrder = i * 3 + 2; }
         }
 
-        const totalDepth = (numSheets - 1) * plexiSpacing;
+        const totalDepth = getStackDepth(numSheets, plexiSpacing);
         plexiGroup.position.z = totalDepth / 2;
+
+        const baseplate = plexiGroup.getObjectByName(PLEXI_BASEPLATE_NAME);
+        if (baseplate instanceof THREE.Mesh) {
+            baseplate.position.z = -totalDepth / 2;
+            baseplate.scale.z = getBaseplateDepth(numSheets, plexiSpacing);
+            baseplate.renderOrder = numSheets * 3 + 10;
+        }
+
+        // Etched mode: one slab per layer — just reposition without rebuilding textures
+        const crystalChildren = [...crystalGroup.children];
+        const crystalPlates = crystalChildren.filter((obj) => obj.name !== CRYSTAL_BASEPLATE_NAME);
+        crystalPlates.forEach((obj, i) => { obj.position.z = -i * plexiSpacing; });
+        const totalCrystalDepth = getStackDepth(crystalPlates.length, plexiSpacing);
+        crystalGroup.position.z = totalCrystalDepth / 2;
+
+        const crystalBaseplate = crystalGroup.getObjectByName(CRYSTAL_BASEPLATE_NAME);
+        if (crystalBaseplate instanceof THREE.Mesh) {
+            crystalBaseplate.position.z = -totalCrystalDepth / 2;
+            crystalBaseplate.scale.z = getBaseplateDepth(crystalPlates.length, plexiSpacing);
+            crystalBaseplate.renderOrder = crystalPlates.length * 3 + 10;
+        }
     }, [plexiSpacing]);
 
     return (
@@ -593,8 +878,9 @@ export function View3D() {
             {/* Studio gradient background (CSS, behind canvas) */}
             <div className="view3d__bg" />
 
-            {/* Spacing controls overlay */}
+            {/* Bottom controls bar: spacing slider */}
             <div className="view3d__controls">
+                {/* Sheet spacing — shared by both 3D modes */}
                 <label className="view3d__label">Sheet spacing</label>
                 <input
                     className="view3d__slider"
@@ -614,6 +900,62 @@ export function View3D() {
                 onClick={() => setShowDevPanel((v) => !v)}
                 title="Toggle wood texture dev panel"
             >⚙ Wood</button>
+
+            {/* Etch shader panel toggle (only relevant in etched mode) */}
+            <button
+                className={`view3d__devtoggle view3d__devtoggle--etch${showEtchPanel ? ' view3d__devtoggle--active' : ''}`}
+                onClick={() => setShowEtchPanel((v) => !v)}
+                title="Toggle etch shader panel"
+            >⚙ Etch</button>
+
+            {showEtchPanel && (() => {
+                const setP = (patch: Partial<EtchShaderParams>) => setEtchParams((p) => ({ ...p, ...patch }));
+                return (
+                    <div className="view3d__devpanel view3d__devpanel--etch">
+                        <div className="view3d__devpanel-title">Etch Shader</div>
+
+                        <div className="view3d__devsection">
+                            <div className="view3d__devsection-label">Refraction <span className="view3d__live-tag">live</span></div>
+                            <DevRow label="Strength" value={etchParams.refractionStrength} min={0} max={0.12} step={0.001} onChange={(v) => setP({ refractionStrength: v })} />
+                        </div>
+
+                        <div className="view3d__devsection">
+                            <div className="view3d__devsection-label">Lamp Response <span className="view3d__live-tag">live</span></div>
+                            <DevRow label="Falloff" value={etchParams.lampFalloffStrength} min={0} max={0.05} step={0.001} onChange={(v) => setP({ lampFalloffStrength: v })} />
+                            <DevRow label="Min light" value={etchParams.lampMinLight} min={0} max={1} step={0.01} onChange={(v) => setP({ lampMinLight: v })} />
+                            <DevRow label="Wrap" value={etchParams.lampWrap} min={0} max={1} step={0.01} onChange={(v) => setP({ lampWrap: v })} />
+                            <DevRow label="Vertical bias" value={etchParams.lampVerticalBias} min={0} max={1} step={0.01} onChange={(v) => setP({ lampVerticalBias: v })} />
+                        </div>
+
+                        <div className="view3d__devsection">
+                            <div className="view3d__devsection-label">Frost <span className="view3d__live-tag">live</span></div>
+                            <DevRow label="Base blend" value={etchParams.frostBlend} min={0} max={1} step={0.01} onChange={(v) => setP({ frostBlend: v })} />
+                            <DevRow label="Fresnel add" value={etchParams.frostFresnelAdd} min={0} max={1} step={0.01} onChange={(v) => setP({ frostFresnelAdd: v })} />
+                        </div>
+
+                        <div className="view3d__devsection">
+                            <div className="view3d__devsection-label">Fresnel <span className="view3d__live-tag">live</span></div>
+                            <DevRow label="Power" value={etchParams.fresnelPower} min={0.5} max={8} step={0.1} onChange={(v) => setP({ fresnelPower: v })} />
+                        </div>
+
+                        <div className="view3d__devsection">
+                            <div className="view3d__devsection-label">Specular Edge <span className="view3d__live-tag">live</span></div>
+                            <DevRow label="Strength" value={etchParams.specularStrength} min={0} max={5} step={0.05} onChange={(v) => setP({ specularStrength: v })} />
+                        </div>
+
+                        <div className="view3d__devsection">
+                            <div className="view3d__devsection-label">Opacity <span className="view3d__live-tag">live</span></div>
+                            <DevRow label="Base alpha" value={etchParams.baseAlpha} min={0} max={1} step={0.01} onChange={(v) => setP({ baseAlpha: v })} />
+                            <DevRow label="Fresnel add" value={etchParams.fresnelAlphaAdd} min={0} max={1} step={0.01} onChange={(v) => setP({ fresnelAlphaAdd: v })} />
+                        </div>
+
+                        <button
+                            className="view3d__devreset"
+                            onClick={() => setEtchParams(DEFAULT_ETCH_SHADER_PARAMS)}
+                        >Reset to defaults</button>
+                    </div>
+                );
+            })()}
 
             {showDevPanel && (() => {
                 const setTP = (patch: Partial<WoodTextureParams>) => setWoodTexParams((p) => ({ ...p, ...patch }));

@@ -51,8 +51,8 @@ function App() {
     <div className="app">
       <TopBar />
       <div className="app__workspace">
-        <LayerPanel />
         {viewMode === '3d' ? <View3D /> : <Preview />}
+        <LayerPanel />
         <PropertiesPanel />
       </div>
     </div>

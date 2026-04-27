@@ -104,6 +104,14 @@
     background 0.15s;
 }
 
+.view3d__devtoggle--etch {
+  right: 80px;
+}
+
+.view3d__devpanel--etch {
+  right: 80px;
+}
+
 .view3d__devtoggle:hover {
   color: #ccc;
   border-color: rgba(99, 102, 241, 0.7);
@@ -230,4 +238,50 @@
 .view3d__devreset:hover {
   border-color: #6366f1;
   color: #a5b4fc;
+}
+
+/* ── Render mode toggle (Plexi | Crystal) ────────────────────────────────────── */
+.view3d__modetoggle {
+  display: flex;
+  gap: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.view3d__modebtn {
+  padding: 4px 12px;
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+  white-space: nowrap;
+}
+
+.view3d__modebtn:not(:last-child) {
+  border-right: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.view3d__modebtn:hover {
+  color: #ccc;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.view3d__modebtn--active {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.18);
+}
+
+/* Divider between mode toggle and spacing controls */
+.view3d__separator {
+  width: 1px;
+  height: 20px;
+  background: rgba(99, 102, 241, 0.25);
+  flex-shrink: 0;
 }

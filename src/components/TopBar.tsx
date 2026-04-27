@@ -14,6 +14,8 @@ export function TopBar() {
     const loadPreset = usePatternStore((s) => s.loadPreset);
     const viewMode = usePatternStore((s) => s.viewMode);
     const setViewMode = usePatternStore((s) => s.setViewMode);
+    const render3DMode = usePatternStore((s) => s.render3DMode);
+    const setRender3DMode = usePatternStore((s) => s.setRender3DMode);
     const userPresets = usePatternStore((s) => s.userPresets);
     const saveUserPreset = usePatternStore((s) => s.saveUserPreset);
     const deleteUserPreset = usePatternStore((s) => s.deleteUserPreset);
@@ -227,9 +229,19 @@ export function TopBar() {
                         onClick={() => setViewMode('2d')}
                     >2D</button>
                     <button
-                        className={`top-bar__view-btn${viewMode === '3d' ? ' top-bar__view-btn--active' : ''}`}
-                        onClick={() => setViewMode('3d')}
-                    >3D</button>
+                        className={`top-bar__view-btn${viewMode === '3d' && render3DMode === 'printed' ? ' top-bar__view-btn--active' : ''}`}
+                        onClick={() => {
+                            setRender3DMode('printed');
+                            setViewMode('3d');
+                        }}
+                    >3D foil</button>
+                    <button
+                        className={`top-bar__view-btn${viewMode === '3d' && render3DMode === 'etched' ? ' top-bar__view-btn--active' : ''}`}
+                        onClick={() => {
+                            setRender3DMode('etched');
+                            setViewMode('3d');
+                        }}
+                    >3D etched</button>
                 </div>
                 <div className="top-bar__export-wrapper">
                     <button

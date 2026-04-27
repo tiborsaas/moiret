@@ -46,6 +46,8 @@ interface PatternStore {
     // View mode
     setViewMode: (mode: "2d" | "3d") => void;
     setPlexiSpacing: (spacing: number) => void;
+    render3DMode: "printed" | "etched";
+    setRender3DMode: (mode: "printed" | "etched") => void;
 
     // Preset loading
     loadPreset: (layers: Layer[], canvas?: Partial<CanvasSettings>) => void;
@@ -113,6 +115,7 @@ export const usePatternStore = create<PatternStore>((set, get) => ({
     selectedLayerId: defaultLayer1.id,
     viewMode: "2d",
     plexiSpacing: 80,
+    render3DMode: "printed",
     userPresets: loadUserPresets(),
 
     addLayer: (type) => {
@@ -187,6 +190,7 @@ export const usePatternStore = create<PatternStore>((set, get) => ({
 
     setViewMode: (mode) => set({ viewMode: mode }),
     setPlexiSpacing: (spacing) => set({ plexiSpacing: spacing }),
+    setRender3DMode: (mode) => set({ render3DMode: mode }),
 
     loadPreset: (layers, canvas) =>
         set((s) => ({

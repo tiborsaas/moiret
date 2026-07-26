@@ -51,7 +51,10 @@ function App() {
     <div className="app">
       <TopBar />
       <div className="app__workspace">
-        {viewMode === '3d' ? <View3D /> : <Preview />}
+        <div style={{ display: viewMode === '3d' ? 'none' : 'flex', flex: 1, height: '100%', minWidth: 0, position: 'relative' }}>
+          <Preview />
+        </div>
+        {viewMode === '3d' && <View3D />}
         <LayerPanel />
         <PropertiesPanel />
       </div>

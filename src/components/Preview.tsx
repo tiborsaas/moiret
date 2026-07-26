@@ -46,6 +46,7 @@ export function Preview() {
     const fitToView = useCallback(() => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
         const scaleX = (rect.width - 40) / canvas.width;
         const scaleY = (rect.height - 40) / canvas.height;
         setZoom(Math.min(scaleX, scaleY, 1));

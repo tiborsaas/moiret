@@ -33,18 +33,21 @@ export function TopBar() {
         }
     }, [showSaveDialog]);
 
-    // Keep selectedUserPreset in sync (if deleted externally)
-    useEffect(() => {
-        if (selectedUserPreset && !userPresets.find((p) => p.name === selectedUserPreset)) {
-            setSelectedUserPreset('');
-        }
-    }, [userPresets, selectedUserPreset]);
+    const effectiveSelectedUserPreset = userPresets.some((p) => p.name === selectedUserPreset)
+        ? selectedUserPreset
+        : '';
 
     const getSvgElement = (): SVGSVGElement | null => {
         const ref = (window as unknown as Record<string, unknown>).__moiretSvgRef as
             | React.RefObject<SVGSVGElement>
             | undefined;
         return ref?.current ?? null;
+    };
+
+    const get3dExportFn = () => {
+        return (window as unknown as Record<string, unknown>).__moiret3dExport as
+            | ((filename?: string, scale?: number) => void)
+            | undefined;
     };
 
     const handleExportSvg = () => {
@@ -54,6 +57,28 @@ export function TopBar() {
     };
 
     const handleExportPng = () => {
+        if (viewMode === '3d') {
+            const export3d = get3dExportFn();
+            if (export3d) {
+                export3d('moire-3d-view.png', pngScale);
+                setShowExportMenu(false);
+                return;
+            }
+        }
+        const svg = getSvgElement();
+        if (svg) exportPng(svg, 'moire-pattern.png', pngScale);
+        setShowExportMenu(false);
+    };
+
+    const handleExport3dViewPng = () => {
+        const export3d = get3dExportFn();
+        if (export3d) {
+            export3d('moire-3d-view.png', pngScale);
+        }
+        setShowExportMenu(false);
+    };
+
+    const handleExportPatternPng = () => {
         const svg = getSvgElement();
         if (svg) exportPng(svg, 'moire-pattern.png', pngScale);
         setShowExportMenu(false);
@@ -162,7 +187,7 @@ export function TopBar() {
                 <label className="top-bar__label">My Presets</label>
                 <select
                     className="top-bar__preset-select"
-                    value={selectedUserPreset}
+                    value={effectiveSelectedUserPreset}
                     onChange={(e) => handleLoadUserPreset(e.target.value)}
                     disabled={userPresets.length === 0}
                 >
@@ -178,7 +203,7 @@ export function TopBar() {
                 <button
                     className="top-bar__user-preset-btn top-bar__user-preset-btn--delete"
                     onClick={handleDeleteUserPreset}
-                    disabled={!selectedUserPreset}
+                    disabled={!effectiveSelectedUserPreset}
                     title="Delete selected preset"
                 >
                     ✕
@@ -260,8 +285,18 @@ export function TopBar() {
                                     <option value={4}>4×</option>
                                 </select>
                             </div>
-                            <button onClick={handleExportSvg}>Export SVG</button>
-                            <button onClick={handleExportPng}>Export PNG ({pngScale}×)</button>
+                            {viewMode === '3d' ? (
+                                <>
+                                    <button onClick={handleExport3dViewPng}>Export 3D View (PNG {pngScale}×)</button>
+                                    <button onClick={handleExportPatternPng}>Export Pattern (PNG {pngScale}×)</button>
+                                    <button onClick={handleExportSvg}>Export Pattern (SVG)</button>
+                                </>
+                            ) : (
+                                <>
+                                    <button onClick={handleExportSvg}>Export SVG</button>
+                                    <button onClick={handleExportPng}>Export PNG ({pngScale}×)</button>
+                                </>
+                            )}
                             <hr />
                             <button onClick={handleExportLayersSvg}>Export Layers (SVG)</button>
                             <button onClick={handleExportLayersPng}>Export Layers (PNG)</button>

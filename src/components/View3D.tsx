@@ -14,6 +14,7 @@ import {
     type HeadLamp,
     DEFAULT_ETCH_SHADER_PARAMS,
 } from './view3d/crystalScene';
+import { downloadBlob } from '../export/svgExport';
 import './View3D.css';
 
 // ─── Procedural walnut wood texture ──────────────────────────────────────────
@@ -411,6 +412,7 @@ export function View3D() {
             canvas: canvasRef.current,
             antialias: true,
             alpha: false,
+            preserveDrawingBuffer: true,
         });
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(w, h);
@@ -588,6 +590,94 @@ export function View3D() {
             sceneRefs.current = null;
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Expose 3D PNG export function globally for TopBar export menu
+    useEffect(() => {
+        (window as unknown as Record<string, unknown>).__moiret3dExport = (
+            filename: string = 'moire-3d-view.png',
+            scale: number = 2
+        ) => {
+            const refs = sceneRefs.current;
+            const container = containerRef.current;
+            const canvasEl = canvasRef.current;
+            if (!refs || !container || !canvasEl) return;
+
+            const { renderer, scene, camera, refractionTarget, crystalGroup, etchShaderMats, headLamp } = refs;
+
+            const baseW = container.clientWidth;
+            const baseH = container.clientHeight;
+            if (baseW <= 0 || baseH <= 0) return;
+
+            const exportW = baseW * scale;
+            const exportH = baseH * scale;
+            const origPixelRatio = renderer.getPixelRatio();
+
+            camera.aspect = exportW / exportH;
+            camera.updateProjectionMatrix();
+
+            renderer.setPixelRatio(1);
+            renderer.setSize(exportW, exportH, false);
+
+            const ds = renderer.getDrawingBufferSize(new THREE.Vector2());
+            refractionTarget.setSize(ds.x, ds.y);
+
+            if (etchShaderMats.length > 0) {
+                const lampPos = new THREE.Vector3();
+                const lampNormal = new THREE.Vector3();
+                const lampQuat = new THREE.Quaternion();
+                const lamp = headLamp;
+                if (lamp) {
+                    lamp.light.getWorldPosition(lampPos);
+                    lamp.light.getWorldQuaternion(lampQuat);
+                    lampNormal.set(0, 0, -1).applyQuaternion(lampQuat).normalize();
+                } else {
+                    lampPos.set(0, 200, 0);
+                    lampNormal.set(0, -1, 0);
+                }
+                const lampIntensity = lamp && lamp.light.visible ? lamp.light.intensity : 0.0;
+                etchShaderMats.forEach((mat) => {
+                    mat.uniforms.uLampWorldPos.value.copy(lampPos);
+                    mat.uniforms.uLampNormal.value.copy(lampNormal);
+                    mat.uniforms.uLampIntensity.value = lampIntensity;
+                });
+
+                if (crystalGroup.visible) {
+                    crystalGroup.visible = false;
+                    renderer.setRenderTarget(refractionTarget);
+                    renderer.render(scene, camera);
+                    renderer.setRenderTarget(null);
+                    crystalGroup.visible = true;
+
+                    const tex = refractionTarget.texture;
+                    etchShaderMats.forEach((mat) => {
+                        mat.uniforms.uSceneTex.value = tex;
+                    });
+                }
+            }
+
+            renderer.render(scene, camera);
+
+            canvasEl.toBlob((blob) => {
+                if (blob) {
+                    downloadBlob(blob, filename);
+                }
+
+                // Restore original canvas resolution
+                camera.aspect = baseW / baseH;
+                camera.updateProjectionMatrix();
+                renderer.setPixelRatio(origPixelRatio);
+                renderer.setSize(baseW, baseH, false);
+
+                const restoredDs = renderer.getDrawingBufferSize(new THREE.Vector2());
+                refractionTarget.setSize(restoredDs.x, restoredDs.y);
+                renderer.render(scene, camera);
+            }, 'image/png');
+        };
+
+        return () => {
+            delete (window as unknown as Record<string, unknown>).__moiret3dExport;
+        };
+    }, []);
 
     // ── Rebuild sheets when layers or canvas changes ──────────────────────────
     const buildSheets = useCallback(async () => {

@@ -8,6 +8,8 @@ interface SvgRendererProps {
     svgRef?: React.RefObject<SVGSVGElement | null>;
     /** If set, only render this layer (for per-layer export) */
     soloLayerId?: string;
+    selectedLayerId?: string | null;
+    onSelectLayer?: (id: string) => void;
 }
 
 function renderElement(el: SvgElement, idx: number, stroke: string, strokeWidth: number) {
@@ -66,7 +68,15 @@ function renderElement(el: SvgElement, idx: number, stroke: string, strokeWidth:
     }
 }
 
-function LayerGroup({ layer, width, height }: { layer: Layer; width: number; height: number }) {
+interface LayerGroupProps {
+    layer: Layer;
+    width: number;
+    height: number;
+    isSelected?: boolean;
+    onSelectLayer?: (id: string) => void;
+}
+
+function LayerGroup({ layer, width, height, isSelected, onSelectLayer }: LayerGroupProps) {
     const elements = useMemo(() => {
         const def = patternRegistry[layer.type];
         if (!def) return [];
@@ -82,14 +92,33 @@ function LayerGroup({ layer, width, height }: { layer: Layer; width: number; hei
                 opacity: layer.opacity,
                 mixBlendMode: layer.blendMode as React.CSSProperties['mixBlendMode'],
             }}
-            transform={`translate(${layer.offsetX}, ${layer.offsetY}) rotate(${layer.rotation}, ${cx}, ${cy}) scale(${layer.scale})`}
+            transform={`translate(${cx + layer.offsetX}, ${cy + layer.offsetY}) rotate(${layer.rotation}) scale(${layer.scale}) translate(${-cx}, ${-cy})`}
+            onMouseDown={(e) => {
+                if (onSelectLayer && e.button === 0 && !e.altKey) {
+                    onSelectLayer(layer.id);
+                }
+            }}
         >
             {elements.map((el, i) => renderElement(el, i, layer.strokeColor, layer.strokeWidth))}
+            {isSelected && (
+                <rect
+                    x={0}
+                    y={0}
+                    width={width}
+                    height={height}
+                    fill="none"
+                    stroke="#00f0ff"
+                    strokeWidth={1.5 / Math.max(0.001, layer.scale)}
+                    strokeDasharray={`${6 / Math.max(0.001, layer.scale)} ${4 / Math.max(0.001, layer.scale)}`}
+                    opacity={0.6}
+                    pointerEvents="none"
+                />
+            )}
         </g>
     );
 }
 
-export function SvgRenderer({ layers, canvas, svgRef, soloLayerId }: SvgRendererProps) {
+export function SvgRenderer({ layers, canvas, svgRef, soloLayerId, selectedLayerId, onSelectLayer }: SvgRendererProps) {
     const visibleLayers = soloLayerId
         ? layers.filter((l) => l.id === soloLayerId)
         : layers.filter((l) => l.visible);
@@ -110,6 +139,8 @@ export function SvgRenderer({ layers, canvas, svgRef, soloLayerId }: SvgRenderer
                     layer={layer}
                     width={canvas.width}
                     height={canvas.height}
+                    isSelected={!soloLayerId && layer.id === selectedLayerId}
+                    onSelectLayer={onSelectLayer}
                 />
             ))}
         </svg>

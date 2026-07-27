@@ -25,6 +25,39 @@
   letter-spacing: 1px;
 }
 
+.layer-panel__title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.layer-panel__hint {
+  font-size: 10px;
+  color: #666;
+}
+
+.layer-panel__hint kbd,
+.layer-panel__footer-hint kbd {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: monospace;
+  font-size: 9px;
+  color: #888;
+}
+
+.layer-panel__footer-hint {
+  padding: 8px 12px;
+  border-top: 1px solid #2a2a2a;
+  font-size: 11px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0d0d0d;
+}
+
 .layer-panel__actions {
   display: flex;
   gap: 4px;

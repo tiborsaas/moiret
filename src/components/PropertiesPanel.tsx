@@ -88,7 +88,7 @@ export function PropertiesPanel() {
                     value={layer.offsetX}
                     min={-canvas.width}
                     max={canvas.width}
-                    step={1}
+                    step={0.5}
                     onChange={(v) => updateLayer(layer.id, { offsetX: v })}
                 />
                 <SliderField
@@ -96,7 +96,7 @@ export function PropertiesPanel() {
                     value={layer.offsetY}
                     min={-canvas.height}
                     max={canvas.height}
-                    step={1}
+                    step={0.5}
                     onChange={(v) => updateLayer(layer.id, { offsetY: v })}
                 />
             </div>

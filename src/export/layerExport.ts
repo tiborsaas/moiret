@@ -43,7 +43,7 @@ function buildLayerSvgString(layer: Layer, canvas: CanvasSettings): string {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}">
   <rect width="${canvas.width}" height="${canvas.height}" fill="${canvas.backgroundColor}" />
-  <g opacity="${layer.opacity}" transform="translate(${layer.offsetX}, ${layer.offsetY}) rotate(${layer.rotation}, ${cx}, ${cy}) scale(${layer.scale})">
+  <g opacity="${layer.opacity}" transform="translate(${cx + layer.offsetX}, ${cy + layer.offsetY}) rotate(${layer.rotation}) scale(${layer.scale}) translate(${-cx}, ${-cy})">
 ${innerSvg}  </g>
 </svg>`;
 }

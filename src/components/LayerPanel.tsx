@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { usePatternStore } from '../store/patternStore';
 import { patternRegistry, patternTypeList } from '../patterns';
 import type { PatternType } from '../types';
@@ -17,6 +17,35 @@ export function LayerPanel() {
     const [showAddMenu, setShowAddMenu] = useState(false);
     const dragItem = useRef<string | null>(null);
     const dragOverItem = useRef<string | null>(null);
+
+    // Space key handler to cycle through layers
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                const target = e.target as HTMLElement | null;
+                const isTyping =
+                    target &&
+                    (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+                        target.isContentEditable);
+
+                if (isTyping) return;
+
+                const currentLayers = usePatternStore.getState().layers;
+                if (currentLayers.length === 0) return;
+
+                e.preventDefault();
+
+                const currentSelectedId = usePatternStore.getState().selectedLayerId;
+                const idx = currentLayers.findIndex((l) => l.id === currentSelectedId);
+                const nextIdx = idx < 0 ? 0 : (idx + 1) % currentLayers.length;
+
+                setSelectedLayer(currentLayers[nextIdx].id);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [setSelectedLayer]);
 
     const handleDragStart = (id: string) => {
         dragItem.current = id;
@@ -44,7 +73,10 @@ export function LayerPanel() {
     return (
         <div className="layer-panel">
             <div className="layer-panel__header">
-                <h3>Layers</h3>
+                <div className="layer-panel__title-group">
+                    <h3>Layers</h3>
+                    <span className="layer-panel__hint"><kbd>Space</kbd> to cycle</span>
+                </div>
                 <div className="layer-panel__actions">
                     <button
                         className="layer-panel__btn"
@@ -126,9 +158,13 @@ export function LayerPanel() {
                 ))}
             </div>
 
-            {layers.length === 0 && (
+            {layers.length === 0 ? (
                 <div className="layer-panel__empty">
                     No layers yet. Click + to add one.
+                </div>
+            ) : (
+                <div className="layer-panel__footer-hint">
+                    <kbd>Space</kbd> cycle layers
                 </div>
             )}
         </div>

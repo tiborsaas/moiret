@@ -131,7 +131,7 @@ export function TopBar() {
     return (
         <div className="top-bar">
             <div className="top-bar__section">
-                <span className="top-bar__title">moiré</span>
+                <span className="top-bar__title">moiré workshop</span>
             </div>
 
             <div className="top-bar__section">

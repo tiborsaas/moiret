@@ -65,7 +65,7 @@ export function buildLayerSvgString(
     const cx = width / 2;
     const cy = height / 2;
     const transform =
-        `translate(${layer.offsetX}, ${layer.offsetY}) rotate(${layer.rotation}, ${cx}, ${cy}) scale(${layer.scale})`;
+        `translate(${cx + layer.offsetX}, ${cy + layer.offsetY}) rotate(${layer.rotation}) scale(${layer.scale}) translate(${-cx}, ${-cy})`;
 
     const elStrings = elements.map((el) =>
         serialiseElement(el, layer.strokeColor, layer.strokeWidth)

@@ -1,4 +1,4 @@
-`import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { TopBar } from './components/TopBar';
 import { LayerPanel } from './components/LayerPanel';
 import { Preview } from './components/Preview';
